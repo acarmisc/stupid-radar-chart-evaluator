@@ -1,0 +1,44 @@
+{
+  "scores": {
+    "author": 51,
+    "ai": 66,
+    "team": 26,
+    "research": 7,
+    "unspecified": 1
+  },
+  "metadata": {
+    "project": "govtool",
+    "languages": [
+      "python",
+      "typescript"
+    ],
+    "checked_at": "2026-05-28T18:38:19.965171Z"
+  },
+  "coverage": {
+    "files_seen": 212,
+    "files_scored": 5,
+    "sampled": true
+  },
+  "scope": {
+    "mode": "repo",
+    "ref": null,
+    "base": null,
+    "head": null
+  },
+  "provenance": {
+    "total_commits": 907,
+    "ai_footer_rate": 0.37927232635060637,
+    "agentic_author_rate": 0.4553472987872106,
+    "conventional_rate": 0.7938257993384785,
+    "msg_uniformity": 0.08489525909592062,
+    "burstiness": 0.17660044150110377,
+    "peak_commits_per_day": 108,
+    "distinct_human_authors": 5,
+    "todo_per_kloc": 0.036349757365369585,
+    "doc_to_code_ratio": 0.23803638610712274,
+    "has_ai_workflow": true,
+    "ai_prior": 54,
+    "author_prior": 30,
+    "team_prior": 46
+  }
+}

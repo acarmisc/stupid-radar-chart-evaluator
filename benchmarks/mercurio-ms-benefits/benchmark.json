@@ -1,0 +1,43 @@
+{
+  "scores": {
+    "author": 71,
+    "ai": 10,
+    "team": 62,
+    "research": 6,
+    "unspecified": 0
+  },
+  "metadata": {
+    "project": "mercurio-ms-benefits",
+    "languages": [
+      "java"
+    ],
+    "checked_at": "2026-05-28T19:35:30.279064Z"
+  },
+  "coverage": {
+    "files_seen": 350,
+    "files_scored": 5,
+    "sampled": true
+  },
+  "scope": {
+    "mode": "repo",
+    "ref": null,
+    "base": null,
+    "head": null
+  },
+  "provenance": {
+    "total_commits": 2519,
+    "ai_footer_rate": 0.0,
+    "agentic_author_rate": 0.0,
+    "conventional_rate": 0.0015879317189360857,
+    "msg_uniformity": 0.12068281063914252,
+    "burstiness": 0.06830818109610802,
+    "peak_commits_per_day": 25,
+    "distinct_human_authors": 23,
+    "todo_per_kloc": 0.0,
+    "doc_to_code_ratio": 0.0043351396415172985,
+    "has_ai_workflow": false,
+    "ai_prior": 11,
+    "author_prior": 20,
+    "team_prior": 96
+  }
+}

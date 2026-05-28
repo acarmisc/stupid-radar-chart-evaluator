@@ -1,0 +1,43 @@
+{
+  "scores": {
+    "author": 73,
+    "ai": 33,
+    "team": 24,
+    "research": 14,
+    "unspecified": 0
+  },
+  "metadata": {
+    "project": "finna-app",
+    "languages": [
+      "python"
+    ],
+    "checked_at": "2026-05-28T19:34:51.578384Z"
+  },
+  "coverage": {
+    "files_seen": 228,
+    "files_scored": 5,
+    "sampled": true
+  },
+  "scope": {
+    "mode": "repo",
+    "ref": null,
+    "base": null,
+    "head": null
+  },
+  "provenance": {
+    "total_commits": 401,
+    "ai_footer_rate": 0.16957605985037408,
+    "agentic_author_rate": 0.18453865336658354,
+    "conventional_rate": 0.7905236907730673,
+    "msg_uniformity": 0.08229426433915212,
+    "burstiness": 0.2725,
+    "peak_commits_per_day": 69,
+    "distinct_human_authors": 4,
+    "todo_per_kloc": 0.06124261260985394,
+    "doc_to_code_ratio": 0.3251064090394096,
+    "has_ai_workflow": true,
+    "ai_prior": 44,
+    "author_prior": 40,
+    "team_prior": 44
+  }
+}

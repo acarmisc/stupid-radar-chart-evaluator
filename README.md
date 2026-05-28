@@ -57,17 +57,22 @@ docker run --rm -v "$PWD:/repo" \
 
 The pipeline is a **multi-signal fusion**: deterministic git/code signals + per-file LLM classification, blended convexly per axis.
 
-```
-git history  ─┐
-codebase     ─┼─► provenance.collect()  ─► repo priors (ai_prior, author_prior, team_prior)
-              │
-sampled files ─► tree-sitter features ─┐
-              ─► git blame authors    ─┼─► LLM classify per file ─► per-axis scores
-              ─► file content         ─┘
-                                        │
-                          ┌─────────────┘
-                          ▼
-                  LOC-weighted reduce → blend with priors → final scores
+```mermaid
+graph LR
+    A[Git History] --> D1[Provenance Signals]
+    B[Codebase] --> D1
+    D1[Provenance Signals] --> D2[Repo Priors]
+    
+    C[Sampled Files] --> F1[Tree-sitter Features]
+    C --> F2[Git Blame Authors]
+    C --> F3[File Content]
+    
+    F1 & F2 & F3 --> F4[LLM Classify per File]
+    F4 --> F5[Per-Axis Scores]
+    
+    D2 & F5 --> B1[LOC-Weighted Reduce]
+    B1 --> B2[Blend with Priors]
+    B2 --> B3[Final Scores]
 ```
 
 ### Deterministic provenance signals (`collect/provenance.py`)

@@ -147,7 +147,7 @@ Example output (25-chunk sample, govtool):
 
 Repo-truth at capture time:
 - 38% commits with `Co-Authored-By: Claude` footer
-- 46% commits authored by AI-named identities (`Riccardo Agentic`, `RiccardoAgent`)
+- 46% commits authored by AI-named identities (e.g., `* Agent`, `* Bot`, `*AI`)
 - 1 TODO marker in 45 000 LOC
 - 18% of inter-commit gaps ≤ 60 seconds
 - 108 commits on peak day

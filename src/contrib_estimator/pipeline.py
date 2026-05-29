@@ -85,30 +85,55 @@ def run_repo(cfg: Config, repo: Path) -> tuple[AxisScores, VerboseResult]:
 
 
 def run_diff(cfg: Config, repo: Path, mode: str, ref: Optional[str], base: Optional[str], head: Optional[str]) -> tuple[AxisScores, VerboseResult]:
-    """Scope: commit or mr. Chunk = hunk."""
+    """Scope: commit or mr. Chunk = hunk.
+
+    Commit-scope evaluation now sends the commit subject + body + footer +
+    branch hint + stat to the LLM alongside the diff. Without this context
+    the LLM cannot see the most discriminative signal at commit scope: the
+    `Co-Authored-By:` footer and AI-style body. Repo-level priors alone
+    cannot differentiate commit-level provenance.
+    """
     prov = provenance.collect(repo)
     priors_str = prov.summary_for_prompt()
 
     if mode == "commit":
         assert ref, "--ref required for commit scope"
         hunks = git.hunks_for_commit(repo, ref)
+        cmeta = git.commit_metadata(repo, ref)
     else:
         assert base and head, "--base and --head required for mr scope"
         hunks = git.hunks_for_range(repo, base, head)
+        cmeta = git.range_metadata(repo, base, head)
+
+    commit_context = cmeta.to_prompt_block() if cmeta else ""
 
     scored: list[tuple[AxisScores, int]] = []
     used_budget = 0
     files_touched: set[str] = set()
     for h in hunks[: cfg.max_chunks]:
-        est_tokens = len(h.content) // 4
+        # Prepend commit context to the hunk content so the LLM sees the
+        # commit message body + Co-Authored-By footer on every chunk.
+        chunk_text = (commit_context + "\n\n--- Patch ---\n" + h.content) if commit_context else h.content
+        est_tokens = len(chunk_text) // 4
         if used_budget + est_tokens > cfg.max_tokens_budget:
             break
         files_touched.add(h.file_rel)
         authors = _blame_authors(repo, h.file_rel)
-        result = classify_chunk(cfg, h.file_rel, authors, {}, h.content, repo_priors=priors_str)
+        result = classify_chunk(cfg, h.file_rel, authors, {}, chunk_text, repo_priors=priors_str)
         if result:
             scored.append((result, h.lines_changed))
             used_budget += est_tokens
+
+    # Merge commits + empty commits show no diff via `git show`. Still send
+    # ONE LLM call with just the commit metadata so the merge/empty commit
+    # gets scored on its body + footer alone.
+    if not scored and commit_context:
+        result = classify_chunk(
+            cfg, "(commit metadata only)", [cmeta.author] if cmeta else [],
+            {}, commit_context, repo_priors=priors_str,
+        )
+        if result:
+            scored.append((result, max(cmeta.insertions + cmeta.deletions if cmeta else 1, 1)))
 
     aggregated = reduce_scores(scored)
     final = blend.apply(aggregated, prov)

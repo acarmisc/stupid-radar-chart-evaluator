@@ -135,12 +135,130 @@ def _annotate_churn(repo: Path, entries: list[FileEntry]) -> None:
             pass  # binary diffs show "-"
 
 
+@dataclass
+class CommitMeta:
+    """Commit message/header context. Sent to the LLM alongside hunks so it
+    can read Co-Authored-By footers, branch names, and message body — the
+    most informative signals at commit scope."""
+    sha: str
+    author: str
+    subject: str
+    body: str
+    branch_hint: str  # "feat/...", "fix/..." extracted from subject or refs
+    files_changed: int
+    insertions: int
+    deletions: int
+
+    def to_prompt_block(self) -> str:
+        """Compact summary injected into the LLM user message."""
+        lines = [
+            f"Commit: {self.sha[:8]}",
+            f"Author: {self.author}",
+            f"Subject: {self.subject}",
+        ]
+        if self.branch_hint:
+            lines.append(f"Branch hint: {self.branch_hint}")
+        lines.append(f"Stat: {self.files_changed} files, +{self.insertions}/-{self.deletions}")
+        if self.body:
+            lines.append("Body:\n" + self.body.strip())
+        return "\n".join(lines)
+
+
+def commit_metadata(repo: Path, ref: str) -> Optional[CommitMeta]:
+    """Fetch subject, body, author, stat, and branch-hint for one commit."""
+    try:
+        raw = _run(["show", "--no-patch",
+                    "--format=%H%x00%an%x00%s%x00%b%x00END",
+                    ref], repo)
+    except subprocess.CalledProcessError:
+        return None
+    parts = raw.split("END\n", 1)[0].split("\0", 3)
+    if len(parts) < 4:
+        return None
+    sha, author, subject, body = parts
+
+    # Stat
+    files_changed = insertions = deletions = 0
+    try:
+        stat_raw = _run(["show", "--shortstat", "--format=", ref], repo).strip()
+    except subprocess.CalledProcessError:
+        stat_raw = ""
+    # e.g. "5 files changed, 244 insertions(+), 98 deletions(-)"
+    import re as _re
+    if m := _re.search(r"(\d+) files? changed", stat_raw):
+        files_changed = int(m.group(1))
+    if m := _re.search(r"(\d+) insertions?", stat_raw):
+        insertions = int(m.group(1))
+    if m := _re.search(r"(\d+) deletions?", stat_raw):
+        deletions = int(m.group(1))
+
+    # Branch hint: pull from "Merge branch 'feat/...'" or from subject prefix
+    branch_hint = ""
+    if "Merge branch" in subject:
+        if m := _re.search(r"'([^']+)'", subject):
+            branch_hint = m.group(1)
+    elif m := _re.match(r"^(feat|fix|chore|refactor|docs|test|hotfix)\(([^)]+)\):", subject):
+        branch_hint = f"{m.group(1)}/{m.group(2)}"
+
+    return CommitMeta(
+        sha=sha, author=author, subject=subject, body=body,
+        branch_hint=branch_hint,
+        files_changed=files_changed, insertions=insertions, deletions=deletions,
+    )
+
+
 def hunks_for_commit(repo: Path, ref: str) -> list[Hunk]:
     return _parse_hunks(_run(["show", "--no-color", "--unified=3", ref], repo))
 
 
 def hunks_for_range(repo: Path, base: str, head: str) -> list[Hunk]:
     return _parse_hunks(_run(["diff", "--no-color", "--unified=3", f"{base}...{head}"], repo))
+
+
+def range_metadata(repo: Path, base: str, head: str) -> Optional[CommitMeta]:
+    """Aggregate metadata for a base..head range: subject of head, accumulated
+    body (all commit messages joined), stat over the full range."""
+    try:
+        log = _run(["log", "--format=%H%x00%an%x00%s%x00%b%x00END---",
+                    f"{base}..{head}"], repo)
+    except subprocess.CalledProcessError:
+        return None
+    if not log.strip():
+        return None
+
+    bodies = []
+    first_sha = first_author = first_subject = ""
+    for rec in log.split("END---"):
+        rec = rec.strip()
+        if not rec:
+            continue
+        parts = rec.split("\0", 3)
+        if len(parts) < 4:
+            continue
+        sha, author, subject, body = parts
+        if not first_sha:
+            first_sha, first_author, first_subject = sha, author, subject
+        bodies.append(f"[{sha[:8]}] {subject}\n{body.strip()}")
+
+    files_changed = insertions = deletions = 0
+    try:
+        stat_raw = _run(["diff", "--shortstat", f"{base}...{head}"], repo).strip()
+    except subprocess.CalledProcessError:
+        stat_raw = ""
+    import re as _re
+    if m := _re.search(r"(\d+) files? changed", stat_raw):
+        files_changed = int(m.group(1))
+    if m := _re.search(r"(\d+) insertions?", stat_raw):
+        insertions = int(m.group(1))
+    if m := _re.search(r"(\d+) deletions?", stat_raw):
+        deletions = int(m.group(1))
+
+    return CommitMeta(
+        sha=first_sha, author=first_author, subject=first_subject,
+        body="\n\n".join(bodies),
+        branch_hint=head,
+        files_changed=files_changed, insertions=insertions, deletions=deletions,
+    )
 
 
 def _parse_hunks(diff: str) -> list[Hunk]:

@@ -44,6 +44,8 @@ class ProvenanceSummary(BaseModel):
     agentic_author_rate: float
     conventional_rate: float
     msg_uniformity: float
+    emoji_ai_rate: float
+    avg_body_length: float
     burstiness: float
     peak_commits_per_day: int
     distinct_human_authors: int
@@ -53,6 +55,7 @@ class ProvenanceSummary(BaseModel):
     doc_to_code_ratio: float
     has_ai_workflow: bool
     scaffold_score: Score
+    committed_artifacts: int
     ai_prior: Score
     author_prior: Score
     team_prior: Score

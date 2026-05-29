@@ -101,15 +101,19 @@ These signals are computed once per run (~1-2s) and:
 final_axis = (1 - w_prior) * llm_score + w_prior * prior_score
 ```
 
-Per-axis prior weights (rationale: direct git evidence dominates surface code style):
+Per-axis BASE prior weights (rationale: direct git evidence dominates surface code style):
 
-| Axis | `w_prior` | Why |
-|---|---:|---|
-| `ai` | 0.5 | very strong deterministic signals (footers + agentic authors) |
-| `team` | 0.4 | distinct-human-author count is reliable, dampened by AI dominance |
-| `author` | 0.3 | weaker — single-author signal hard to ground |
-| `research` | 0.0 | no deterministic prior — LLM-only |
-| `unspecified` | 0.0 | LLM-only |
+| Axis | `w_prior` (base) | `w_prior` (boosted) | Why |
+|---|---:|---:|---|
+| `ai` | 0.5 | 0.75 | very strong deterministic signals (footers + agentic authors); boost when IDE-Copilot signature detected |
+| `author` | 0.5 | 0.75 | derived as anti-AI; mirrors ai boost |
+| `team` | 0.3 | 0.5 | n_significant prior is noisy on long-tail; boost when ≥4 significant humans |
+| `research` | 0.3 | 0.5 | scaffold prior is a coarse proxy; boost when scaffold_score ≥ 60 |
+| `unspecified` | 0.0 | — | LLM-only |
+
+The blend is **adaptive**: boosted weights kick in when strong meta-signals fire
+(IDE-Copilot pattern, large team, heavy scaffold). This counters known LLM-judge
+verbosity bias on extreme repos.
 
 The fusion approach is grounded in [TriFusion-LLM (2026)](https://arxiv.org/abs/2603.15004) and [SemEval-2026 Task 13](https://arxiv.org/abs/2605.01596), both of which show even simple multi-signal fusion outperforms any single-signal classifier by 5-10 pp F1.
 
@@ -138,14 +142,16 @@ For attribution to specific AI agents (Copilot / Devin / Claude / Cursor), [Fing
 
 ## Benchmark
 
-`tests/golden/govtool_benchmark.json` holds a snapshot run on a real Italian-language codebase with mixed human + AI authorship. The provenance signals are asserted reproducibly in `tests/test_golden.py` (skipped if the source repo isn't present).
+`tests/golden/reference_provenance.json` holds a snapshot of the deterministic
+provenance signals from a reference repo. The signals are asserted reproducibly
+in `tests/test_golden.py` (skipped if the source repo isn't present locally).
 
-Example output (25-chunk sample, govtool):
+Example output (25-chunk sample on a real mixed human + AI repo):
 ```json
 {"author": 29, "ai": 70, "team": 39, "research": 5, "unspecified": 1}
 ```
 
-Repo-truth at capture time:
+Captured deterministic priors at that snapshot:
 - 38% commits with `Co-Authored-By: Claude` footer
 - 46% commits authored by AI-named identities (e.g., `* Agent`, `* Bot`, `*AI`)
 - 1 TODO marker in 45 000 LOC
@@ -158,4 +164,5 @@ Repo-truth at capture time:
 pytest -q
 ```
 
-21 tests covering provenance regexes, burstiness/uniformity formulas, sampling, aggregation, schema, and golden reproducibility.
+37 tests covering provenance regexes, burstiness / uniformity formulas, sampling,
+aggregation, blend trigger logic, schema, and golden reproducibility.

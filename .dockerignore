@@ -8,3 +8,6 @@ tests
 *.egg-info
 dist
 build
+.env
+.env.local
+benchmarks

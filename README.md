@@ -20,29 +20,72 @@ Axes are **independent 0-100 scores** (not a percentage split).
 
 ## Install
 
+The tool ships as a Python package with a single console entry point.
+Recommended install with **pipx** (isolated CLI environment):
+
 ```bash
-pip install -e .
+pipx install git+https://github.com/acarmisc/stupid-radar-chart-evaluator.git
 ```
+
+Or with **pip** (use a venv to avoid polluting system Python):
+
+```bash
+pip install git+https://github.com/acarmisc/stupid-radar-chart-evaluator.git
+```
+
+From a local checkout (editable dev install):
+
+```bash
+git clone https://github.com/acarmisc/stupid-radar-chart-evaluator.git
+cd stupid-radar-chart-evaluator
+pip install -e ".[dev]"
+```
+
+Requires **Python ≥ 3.11**.
 
 ## Env
 
+Credentials are read from a `.env` file in the working directory (or any var
+exported in the shell):
+
 ```bash
-cp .env.example .env  # or set vars directly
-LITELLM_BASE_URL=...
-LITELLM_KEY=...
-MODEL_CLASSIFY=openai/kimi-k2.5     # default; needs openai/ prefix on LiteLLM gateway
+cp .env.example .env
+# then edit:
+LITELLM_BASE_URL=https://your-gateway/
+LITELLM_KEY=sk-...
+MODEL_CLASSIFY=openai/kimi-k2.5     # use the openai/ prefix on LiteLLM gateways
 ```
 
-Optional guards: `MAX_CHUNKS=200`, `MAX_FILE_KB=100`, `MAX_TOKENS_BUDGET=500000`, `SEED=42`.
+Optional guards: `MAX_CHUNKS=200`, `MAX_FILE_KB=100`,
+`MAX_TOKENS_BUDGET=500000`, `SEED=42`.
 
 ## Usage
 
+The CLI uses subcommands. Run with `-h` on any of them for the full option list.
+
 ```bash
-contrib-estimator --repo /path/to/repo                          # whole repo
-contrib-estimator --scope commit --ref abc123                   # one commit
-contrib-estimator --scope mr --base main --head feature-x       # MR / PR
-contrib-estimator --verbose                                     # incl. metadata + provenance
+# Score a whole repo (run from inside or via --repo)
+contrib-estimator estimate --repo /path/to/repo
+
+# Score a single commit
+contrib-estimator estimate --scope commit --ref HEAD~1
+
+# Score a merge / pull request range
+contrib-estimator estimate --scope mr --base main --head feature-x --verbose
+
+# Sanity check on a new repo — no LLM calls, no credentials needed
+contrib-estimator estimate --repo . --dry-run
+
+# Probe the configured gateway for available models
+contrib-estimator list-models
+
+# Show version
+contrib-estimator --version
 ```
+
+The CLI pre-flight-checks the repo (must be git with commits), the refs
+(must resolve), and the LiteLLM env vars (must be set) before doing any work,
+so it fails fast with a clear hint when something's off.
 
 ## Docker
 
@@ -50,7 +93,7 @@ contrib-estimator --verbose                                     # incl. metadata
 docker build -t contrib-estimator .
 docker run --rm -v "$PWD:/repo" \
   -e LITELLM_BASE_URL=... -e LITELLM_KEY=... \
-  contrib-estimator --scope mr --base main --head feature-x --verbose
+  contrib-estimator estimate --scope mr --base main --head feature-x --verbose
 ```
 
 ## Methodology

@@ -6,7 +6,7 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY pyproject.toml ./
+COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
 
 RUN pip install --no-cache-dir .
@@ -16,4 +16,4 @@ ENV PYTHONUNBUFFERED=1 \
     LITELLM_BASE_URL=http://litellm:4000
 
 ENTRYPOINT ["contrib-estimator"]
-CMD ["--repo", "/repo"]
+CMD ["estimate", "--repo", "/repo"]
